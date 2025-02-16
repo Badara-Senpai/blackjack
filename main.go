@@ -6,7 +6,22 @@ import (
 	"strings"
 )
 
+type State int8
+
+const (
+	StatePlayerTurn State = iota
+	StateDealerTurn
+	StateHandOver
+)
+
 type Hand []deck.Card
+
+type GameState struct {
+	Deck   []deck.Card
+	State  State
+	Player Hand
+	Dealer Hand
+}
 
 func (h Hand) String() string {
 	cardsInHand := make([]string, len(h))
@@ -77,7 +92,7 @@ func main() {
 		}
 	}
 
-	// Lets add some logic for the dealer
+	// Let's add some logic for the dealer
 	// If dealer score <= 16, we hit
 	// If dealer has soft 17, then we hit
 	for dealer.Score() <= 16 || (dealer.Score() == 17 && dealer.MinScore() != 17) {
@@ -106,4 +121,30 @@ func main() {
 
 func drawCards(cards []deck.Card) (deck.Card, []deck.Card) {
 	return cards[0], cards[1:]
+}
+
+func (gs *GameState) CurrentPlayer() *Hand {
+	switch gs.State {
+	case StatePlayerTurn:
+		return &gs.Player
+	case StateDealerTurn:
+		return &gs.Dealer
+	default:
+		panic("It isn't currently ay player's turn")
+	}
+}
+
+func clone(gs GameState) GameState {
+	newGs := GameState{
+		Deck:   make([]deck.Card, len(gs.Deck)),
+		State:  gs.State,
+		Player: make(Hand, len(gs.Player)),
+		Dealer: make(Hand, len(gs.Dealer)),
+	}
+
+	copy(newGs.Deck, gs.Deck)
+	copy(newGs.Player, gs.Player)
+	copy(newGs.Dealer, gs.Dealer)
+
+	return newGs
 }
