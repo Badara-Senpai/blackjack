@@ -6,29 +6,60 @@ import (
 )
 
 type state int8
+type Options struct {
+	Decks           int
+	Hands           int
+	BlackjackPayout float64
+}
 
 const (
-	statePlayerTurn state = iota
+	stateBet state = iota
+	statePlayerTurn
 	stateDealerTurn
 	stateHandOver
 )
 
 type Game struct {
 	// unexported fields
-	deck     []deck.Card
-	state    state
-	player   []deck.Card
+	nDecks          int
+	nHands          int
+	blackjackPayout float64
+
+	deck  []deck.Card
+	state state
+
+	player    []deck.Card
+	playerBet int
+	balance   int
+
 	dealer   []deck.Card
-	balance  int
 	dealerAI AI
 }
 
-func New() Game {
-	return Game{
+func New(opts Options) Game {
+	g := Game{
 		state:    statePlayerTurn,
 		dealerAI: dealerAI{},
 		balance:  0,
 	}
+
+	if opts.Decks == 0 {
+		opts.Decks = 3
+	}
+
+	if opts.Hands == 0 {
+		opts.Hands = 100
+	}
+
+	if opts.BlackjackPayout == 0.0 {
+		opts.BlackjackPayout = 1.5
+	}
+
+	g.nDecks = opts.Decks
+	g.nHands = opts.Hands
+	g.blackjackPayout = opts.BlackjackPayout
+
+	return g
 }
 
 func (g *Game) currentPlayer() *[]deck.Card {
@@ -60,10 +91,26 @@ func deal(g *Game) {
 	g.state = statePlayerTurn
 }
 
-func (g *Game) Play(ai AI) int {
-	g.deck = deck.New(deck.Deck(3), deck.Shuffle)
+func bet(g *Game, ai AI, shuffled bool) {
+	bet := ai.Bet(shuffled)
+	g.playerBet = bet
+}
 
-	for i := 0; i < 2; i++ {
+func (g *Game) Play(ai AI) int {
+	g.deck = nil
+
+	minLength := 52 * g.nDecks / 3
+
+	for i := 0; i < g.nHands; i++ {
+		shuffled := false
+
+		if len(g.deck) < minLength {
+			g.deck = deck.New(deck.Deck(g.nDecks), deck.Shuffle)
+			shuffled = true
+		}
+
+		bet(g, ai, shuffled)
+
 		deal(g)
 
 		for g.state == statePlayerTurn {
@@ -146,27 +193,24 @@ func minScore(hand ...deck.Card) int {
 
 func endHand(g *Game, ai AI) {
 	pScore, dScore := Score(g.player...), Score(g.dealer...)
-
-	fmt.Println("****** FINAL HANDS ******")
-	fmt.Println("Player: ", g.player, "\nScore: ", pScore)
-	fmt.Println("Dealer: ", g.dealer, "\nScore: ", dScore)
+	winnings := g.playerBet
 
 	switch {
 	case pScore > 21:
 		fmt.Println("You busted!")
-		g.balance--
+		winnings = -winnings
 	case dScore > 21:
 		fmt.Println("Dealer busted")
-		g.balance++
 	case pScore > dScore:
 		fmt.Println("You win!")
-		g.balance++
 	case dScore > pScore:
 		fmt.Println("You lose!")
-		g.balance--
+		winnings = -winnings
 	case pScore == dScore:
 		fmt.Println("Draw")
+		winnings = 0
 	}
+	g.balance += winnings
 
 	fmt.Println()
 
