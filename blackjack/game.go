@@ -1,6 +1,7 @@
 package blackjack
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Badara-Senpai/go-deck/deck"
 )
@@ -73,7 +74,11 @@ func (g *Game) currentPlayer() *[]deck.Card {
 	}
 }
 
-type Move func(*Game)
+var (
+	errBust = errors.New("hand score ex")
+)
+
+type Move func(*Game) error
 
 func deal(g *Game) {
 	g.player = make([]deck.Card, 0, 5)
@@ -123,7 +128,16 @@ func (g *Game) Play(ai AI) int {
 			copy(hand, g.player)
 
 			move := ai.Play(hand, g.dealer[0])
-			move(g)
+			err := move(g)
+
+			if err != nil {
+				switch err {
+				case errBust:
+					MoveStand(g)
+				default:
+					panic(err)
+				}
+			}
 		}
 
 		// Let's add some logic for the dealer
@@ -143,7 +157,7 @@ func (g *Game) Play(ai AI) int {
 	return g.balance
 }
 
-func MoveHit(g *Game) {
+func MoveHit(g *Game) error {
 	hand := g.currentPlayer()
 
 	var card deck.Card
@@ -151,12 +165,25 @@ func MoveHit(g *Game) {
 
 	*hand = append(*hand, card)
 	if Score(*hand...) > 21 {
-		MoveStand(g)
+		return errBust
 	}
+
+	return nil
 }
 
-func MoveStand(g *Game) {
+func MoveStand(g *Game) error {
 	g.state++
+
+	return nil
+}
+
+func MoveDouble(g *Game) error {
+	if len(g.player) != 2 {
+		return errors.New("You can  only double on   a hand with 2 cards")
+	}
+	g.playerBet *= 2
+	MoveHit(g)
+	return MoveStand(g)
 }
 
 func drawCards(cards []deck.Card) (deck.Card, []deck.Card) {
