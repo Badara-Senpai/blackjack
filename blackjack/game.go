@@ -113,6 +113,11 @@ func (g *Game) Play(ai AI) int {
 
 		deal(g)
 
+		if BlackJack(g.dealer...) {
+			endHand(g, ai)
+			continue
+		}
+
 		for g.state == statePlayerTurn {
 			hand := make([]deck.Card, len(g.player))
 			copy(hand, g.player)
@@ -182,6 +187,11 @@ func Soft(hand ...deck.Card) bool {
 	return minScore != score
 }
 
+// BlackJack returns true if a hand is two cards and have a score of 21
+func BlackJack(hand ...deck.Card) bool {
+	return len(hand) == 2 && Score(hand...) == 21
+}
+
 func minScore(hand ...deck.Card) int {
 	score := 0
 	for _, card := range hand {
@@ -193,9 +203,19 @@ func minScore(hand ...deck.Card) int {
 
 func endHand(g *Game, ai AI) {
 	pScore, dScore := Score(g.player...), Score(g.dealer...)
+	pBlackJack, dBlackJack := BlackJack(g.player...), BlackJack(g.dealer...)
 	winnings := g.playerBet
 
 	switch {
+	case pBlackJack && dBlackJack:
+		fmt.Println("BlackJack Draw")
+		winnings = 0
+	case dBlackJack:
+		fmt.Println("*BlackJack* for Dealer, You Lose!")
+		winnings = -winnings
+	case pBlackJack:
+		fmt.Println("*BlackJack* You win!")
+		winnings = int(float64(winnings) * g.blackjackPayout)
 	case pScore > 21:
 		fmt.Println("You busted!")
 		winnings = -winnings
