@@ -1,6 +1,6 @@
 # Go Blackjack ♣️♦️
 
-![Blackjack Game](cover.jpg)
+![Blackjack Game](cover.JPG)
 
 A command-line implementation of the classic Blackjack card game written in Go. This project is built using a custom-made card deck package ([go-deck](https://github.com/Badara-Senpai/go-deck)), that I created and it provides a flexible and reusable playing card system. The combination of these two packages creates a complete, modular card game framework that can be extended for other card games as well.
 
